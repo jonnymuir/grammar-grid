@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            // This line is the key: point it to the extension sub-folder
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/packages/extension"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/packages/extension/out/**/*.js"
+            ],
+            "preLaunchTask": "npm: build" 
+        }
+    ]
+}

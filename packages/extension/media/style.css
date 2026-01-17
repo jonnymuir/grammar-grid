@@ -1,0 +1,111 @@
+:root {
+    --header-height: 44px;
+    --cell-width: 120px;
+    --index-width: 40px;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    background-color: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Formula Bar Styling */
+#formula-bar {
+    display: flex;
+    align-items: center;
+    height: var(--header-height);
+    background: var(--vscode-titleBar-activeBackground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding: 0 8px;
+    gap: 12px;
+}
+
+#fx-label {
+    font-family: 'Courier New', Courier, monospace;
+    font-style: italic;
+    font-weight: bold;
+    color: var(--vscode-symbolIcon-functionForeground);
+    font-size: 1.2em;
+    user-select: none;
+}
+
+#editor-container {
+    flex-grow: 1;
+    height: 28px;
+    background: var(--vscode-input-background);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Grid Styling */
+#grid-wrapper {
+    flex-grow: 1;
+    overflow: auto;
+    background: var(--vscode-editor-background);
+}
+
+#grid-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+
+/* Header Cells (A, B, C... and 1, 2, 3...) */
+#grid-table th {
+    background: var(--vscode-sideBar-background);
+    color: var(--vscode-descriptionForeground);
+    font-weight: normal;
+    font-size: 0.85em;
+    border-right: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    user-select: none;
+}
+
+#grid-table tbody th {
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    width: var(--index-width);
+    text-align: center;
+}
+
+/* Data Cells */
+#grid-table td {
+    border-right: 1px solid var(--vscode-widget-border);
+    border-bottom: 1px solid var(--vscode-widget-border);
+    padding: 4px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.1s ease;
+    cursor: cell;
+}
+
+#grid-table tr:hover td {
+    background: var(--vscode-list-hoverBackground);
+}
+
+/* Selection State */
+.selected-cell {
+    outline: 2px solid var(--vscode-focusBorder) !important;
+    outline-offset: -2px;
+    background: var(--vscode-editor-selectionBackground) !important;
+    z-index: 5;
+}
+
+/* Scrollbar refinement */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background); }
+::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground); }

@@ -1,0 +1,16 @@
+{
+    "projectName": "CalculationLanguage",
+    "languages": [
+        {
+            "id": "calculation-language",
+            "grammar": "src/calculation-language.langium",
+            "fileExtensions": [
+                "calc"
+            ],
+            "textMate": {
+                "out": "syntaxes/calculation-language.tmLanguage.json"
+            }
+        }
+    ],
+    "out": "src/generated"
+}

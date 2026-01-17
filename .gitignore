@@ -1,0 +1,27 @@
+# --- Dependencies ---
+node_modules/
+.npm/
+
+# --- Build Artifacts (Compiled Code) ---
+**/out/
+**/dist/
+**/*.tsbuildinfo
+
+# --- Langium Generated Code ---
+# We ignore these because they are recreated every time you run 'langium:generate'
+packages/language/src/generated/
+
+# --- VS Code Metadata ---
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# --- Environment & Logs ---
+.env
+*.log
+npm-debug.log*
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db

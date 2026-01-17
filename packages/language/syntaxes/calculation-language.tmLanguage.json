@@ -1,0 +1,17 @@
+{
+  "name": "calculation-language",
+  "scopeName": "source.calculation-language",
+  "fileTypes": [
+    "calc"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "name": "keyword.control.calculation-language",
+      "match": "\\b(SUM|data_dictionary)\\b"
+    }
+  ],
+  "repository": {}
+}
