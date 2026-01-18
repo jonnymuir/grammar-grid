@@ -32,8 +32,7 @@
     "homepage": "https://github.com/jonnymuir/grammar-grid#readme",
     "extensionKind": [
         "ui",
-        "workspace",
-        "web"
+        "workspace"
     ],
     "main": "./out/extension/main.cjs",
     "browser": "./out/browser/extension.cjs",
