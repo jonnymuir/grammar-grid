@@ -14,7 +14,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies
@@ -29,8 +29,6 @@ jobs:
         run: npm run build
 
       - name: Publish to Marketplace
-        # We run vsce from the extension package folder
         working-directory: ./packages/extension
-        # The --no-dependencies flag is often useful in monorepos to prevent 
-        # vsce from trying to re-install workspace packages during packaging
-        run: npx vsce publish --pat ${{ secrets.VSCE_PAT }} --no-dependencies
+        # Use the modern scoped package name
+        run: npx @vscode/vsce publish --pat ${{ secrets.VSCE_PAT }} --no-dependencies
