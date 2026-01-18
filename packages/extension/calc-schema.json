@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "GrammarGrid File Format",
+    "type": "object",
+    "properties": {
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "label": { "type": "string" },
+                    "isHeader": { "type": "boolean" },
+                    "source": { "enum": ["DB", "CALC", "MANUAL", "CONST"] },
+                    "note": { "type": "string" }
+                }
+            }
+        },
+        "values": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+        }
+    }
+}

@@ -11,17 +11,47 @@
         "Programming Languages"
     ],
     "contributes": {
-        "languages": [{
-            "id": "calculation-language",
-            "aliases": ["CalculationLanguage", "calculation-language"],
-            "extensions": [".calc"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "calculation-language",
-            "scopeName": "source.calculation-language",
-            "path": "syntaxes/calculation-language.tmLanguage.json"
-        }],
+        "jsonValidation": [
+            {
+                "fileMatch": "*.calc",
+                "url": "./calc-schema.json"
+            }
+        ],
+        "languages": [
+            {
+                "id": "calculation-language",
+                "aliases": [
+                    "CalculationLanguage",
+                    "calculation-language"
+                ],
+                "extensions": [
+                    ".calc"
+                ],
+                "configuration": "./language-configuration.json",
+                "mimetypes": [
+                    "application/json"
+                ]
+            }
+        ],
+        "grammars": [
+            {
+                "language": "calculation-language",
+                "scopeName": "source.calculation-language",
+                "path": "syntaxes/calculation-language.tmLanguage.json"
+            }
+        ],
+        "customEditors": [
+            {
+                "viewType": "grammarGrid.editor",
+                "displayName": "GrammarGrid Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.calc"
+                    }
+                ],
+                "priority": "default"
+            }
+        ],
         "commands": [
             {
                 "command": "grammarGrid.open",
@@ -49,6 +79,6 @@
         "esbuild": "~0.25.5"
     },
     "vsce": {
-      "dependencies": false
+        "dependencies": false
     }
 }

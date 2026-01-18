@@ -6,40 +6,90 @@ import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 let client: LanguageClient;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    // 1. Start the Language Server (The BNF Brain)
     client = await startLanguageClient(context);
 
-    // 2. Register the GrammarGrid Command (The UI)
+    // Register our Custom Editor Provider
     context.subscriptions.push(
-        vscode.commands.registerCommand('grammarGrid.open', () => {
-            const panel = vscode.window.createWebviewPanel(
-                'grammarGrid',
-                'GrammarGrid POC',
-                vscode.ViewColumn.One,
-                {
-                    enableScripts: true,
-                    localResourceRoots: [vscode.Uri.file(path.join(context.extensionPath, 'media'))]
-                }
-            );
-
-            panel.webview.html = getHtmlForWebview(panel.webview, context.extensionUri);
-        })
+        vscode.window.registerCustomEditorProvider(
+            'grammarGrid.editor',
+            new GrammarGridProvider(context)
+        )
     );
 }
 
-export function deactivate(): Thenable<void> | undefined {
-    if (client) {
-        return client.stop();
+class GrammarGridProvider implements vscode.CustomTextEditorProvider {
+    constructor(private readonly context: vscode.ExtensionContext) { }
+
+    public async resolveCustomTextEditor(
+        document: vscode.TextDocument,
+        webviewPanel: vscode.WebviewPanel,
+        _token: vscode.CancellationToken
+    ): Promise<void> {
+        webviewPanel.webview.options = { enableScripts: true };
+        webviewPanel.webview.html = getHtmlForWebview(webviewPanel.webview, this.context.extensionUri);
+
+        // 1. Initial Load: Send file content to Webview
+        const updateWebview = () => {
+            const text = document.getText();
+            let data;
+            try {
+                // If file is empty, use a blank template
+                data = text.trim().length === 0 ? this.getBlankTemplate() : JSON.parse(text);
+            } catch {
+                data = this.getBlankTemplate();
+            }
+            webviewPanel.webview.postMessage({ type: 'loadData', data });
+        };
+
+        // 2. Listen for messages from Webview
+        webviewPanel.webview.onDidReceiveMessage(e => {
+            if (e.type === 'ready') {
+                updateWebview();
+            }
+            if (e.type === 'saveData') {
+                this.updateTextDocument(document, e.data);
+            }
+        });
+
+        // 3. Optional: Update webview if the file changes externally
+        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
+            if (e.document.uri.toString() === document.uri.toString() && e.contentChanges.length > 0) {
+                // To avoid loops, only update if the change didn't come from our UI
+            }
+        });
+
+        webviewPanel.onDidDispose(() => changeDocumentSubscription.dispose());
     }
-    return undefined;
+
+    private getBlankTemplate() {
+        return {
+            rows: [
+                { id: 'header_1', label: 'New Calculation', isHeader: true },
+                { id: 'row_01', label: 'Item 1', source: 'MANUAL', type: '', note: '' }
+            ],
+            values: { 'row_01': '' }
+        };
+    }
+
+    private updateTextDocument(document: vscode.TextDocument, data: any) {
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(
+            document.uri,
+            new vscode.Range(0, 0, document.lineCount, 0),
+            JSON.stringify(data, null, 4)
+        );
+        return vscode.workspace.applyEdit(edit);
+    }
 }
 
-// --- UI HELPER ---
+export function deactivate(): Thenable<void> | undefined {
+    return client ? client.stop() : undefined;
+}
+
 function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'style.css'));
 
-    // Note: We removed Handsontable CDNs and added a container for our custom table
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -53,15 +103,10 @@ function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri) {
             <div id="fx-label">fx</div>
             <div id="editor-container"></div>
         </div>
-        
         <div id="grid-wrapper">
             <table id="grid-table">
-                <thead>
-                    <tr id="header-row">
-                        </tr>
-                </thead>
-                <tbody id="grid-body">
-                    </tbody>
+                <thead><tr id="header-row"></tr></thead>
+                <tbody id="grid-body"></tbody>
             </table>
         </div>
         <script src="${scriptUri}"></script>
@@ -69,27 +114,18 @@ function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri) {
     </html>`;
 }
 
-// --- LANGUAGE SERVER SETUP ---
 async function startLanguageClient(context: vscode.ExtensionContext): Promise<LanguageClient> {
     const serverModule = context.asAbsolutePath(path.join('out', 'language', 'main.cjs'));
-    const debugOptions = { execArgv: ['--nolazy', `--inspect${process.env.DEBUG_BREAK ? '-brk' : ''}=${process.env.DEBUG_SOCKET || '6009'}`] };
-
+    const debugOptions = { execArgv: ['--nolazy', `--inspect=6009`] };
     const serverOptions: ServerOptions = {
         run: { module: serverModule, transport: TransportKind.ipc },
         debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
     };
-
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: '*', language: 'calculation-language' }]
+        documentSelector: [{ scheme: 'vscode-webview-resource', language: 'calculation-language' },
+        { scheme: 'untitled', language: 'calculation-language' }]
     };
-
-    const client = new LanguageClient(
-        'calculation-language',
-        'CalculationLanguage',
-        serverOptions,
-        clientOptions
-    );
-
+    const client = new LanguageClient('calculation-language', 'CalculationLanguage', serverOptions, clientOptions);
     await client.start();
     return client;
 }

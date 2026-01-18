@@ -1,40 +1,61 @@
 (function () {
     const vscode = acquireVsCodeApi();
 
-    const state = {
-        selectedRowId: 'sal_01',
+    // The state now starts empty; it will be populated by the JSON file
+    let state = {
+        selectedRowId: null,
         activeField: 'value',
-        rows: [
-            { id: 'header_1', label: 'Member Core Data', isHeader: true },
-            { id: 'sal_01', label: 'Final Pensionable Salary', source: 'DB', type: 'Number', note: 'Based on last 36 months average' },
-            { id: 'srv_01', label: 'Total Qualifying Service', source: 'MANUAL', type: 'Years', note: 'Checked against paper records 2024' },
-            { id: 'header_2', label: 'Benefit Calculation', isHeader: true },
-            { id: 'acc_01', label: 'Accrual Rate', source: 'CONST', type: 'Factor', note: 'Standard 1/60th Scheme Rule' },
-            { id: 'ret_01', label: 'Annual Pension', source: 'CALC', type: 'Currency', note: '' }
-        ],
-        values: {
-            'sal_01': '=data_dictionary(final_salary)',
-            'srv_01': '24.5',
-            'acc_01': '0.01667',
-            'ret_01': '=SUM(sal_01 * srv_01 * acc_01)'
-        }
+        rows: [],
+        values: {}
     };
 
+    // --- MESSAGE HANDLING ---
+
+    // Handle data coming FROM the extension (Extension Host -> Webview)
+    window.addEventListener('message', event => {
+        const message = event.data;
+        switch (message.type) {
+            case 'loadData':
+                state.rows = message.data.rows || [];
+                state.values = message.data.values || {};
+                
+                // If no row is selected yet, pick the first non-header row
+                if (!state.selectedRowId && state.rows.length > 0) {
+                    const firstDataRow = state.rows.find(r => !r.isHeader);
+                    if (firstDataRow) state.selectedRowId = firstDataRow.id;
+                }
+                
+                renderGrid();
+                
+                // Sync the editor with the newly loaded data
+                if (window.editor && state.selectedRowId) {
+                    updateEditorFromState();
+                }
+                break;
+        }
+    });
+
+    // Helper to send data TO the extension (Webview -> Extension Host)
+    function saveToDisk() {
+        vscode.postMessage({
+            type: 'saveData',
+            data: {
+                rows: state.rows,
+                values: state.values
+            }
+        });
+    }
+
     function init() {
-        tidyRows();
-        renderGrid();
+        // Tell the extension we are ready to receive data
+        vscode.postMessage({ type: 'ready' });
 
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' } });
         require(['vs/editor/editor.main'], function () {
-            // 1. Register Languages first
             registerCalculationLanguage();
             registerSourceLanguage();
-
-            // 2. Initialize Editor
             initMonaco();
-
-            // 3. Set initial state
-            selectCell('sal_01', 'value');
+            renderGrid();
         });
     }
 
@@ -63,7 +84,6 @@
             if (row.isHeader) {
                 tr.className = 'group-header';
                 tr.innerHTML = `<td colspan="5">${row.label}</td>`;
-                tr.addEventListener('click', () => selectCell(row.id, 'label'));
             } else {
                 tr.className = 'data-row';
                 tr.innerHTML = `<td class="id-cell ${isSelected(row.id, 'id')}" data-field="id">${row.id || ''}</td>` +
@@ -89,7 +109,7 @@
     function selectCell(id, field) {
         state.selectedRowId = id;
         state.activeField = field;
-
+        
         const fxLabel = document.getElementById('fx-label');
         if (fxLabel) {
             fxLabel.innerText = (field === 'value') ? 'fx' : 'Edit';
@@ -97,16 +117,24 @@
         }
 
         renderGrid();
+        updateEditorFromState();
+    }
 
-        if (window.editor) {
-            const row = state.rows.find(r => r.id === id);
-            let content = (field === 'value') ? (state.values[id] || '') : (row ? row[field] || '' : '');
+    function updateEditorFromState() {
+        if (!window.editor || !state.selectedRowId) return;
 
+        const row = state.rows.find(r => r.id === state.selectedRowId);
+        let content = (state.activeField === 'value') 
+            ? (state.values[state.selectedRowId] || '') 
+            : (row ? row[state.activeField] || '' : '');
+
+        // Prevent cursor jump by only setting value if it differs
+        if (window.editor.getValue() !== content) {
             window.editor.setValue(content);
-            setEditorMode(field);
-            window.editor.focus();
-            window.editor.setPosition({ lineNumber: 1, column: content.length + 1 });
         }
+        
+        setEditorMode(state.activeField);
+        window.editor.focus();
     }
 
     function setEditorMode(field) {
@@ -123,7 +151,6 @@
     function registerCalculationLanguage() {
         const LANG_ID = 'calculation-language';
         monaco.languages.register({ id: LANG_ID });
-
         monaco.languages.setMonarchTokensProvider(LANG_ID, {
             tokenizer: {
                 root: [
@@ -136,7 +163,6 @@
             }
         });
 
-        // Theme definition (Shared for both languages)
         monaco.editor.defineTheme('grid-theme', {
             base: 'vs-dark',
             inherit: true,
@@ -166,47 +192,31 @@
     function registerSourceLanguage() {
         const LANG_ID = 'source-language';
         monaco.languages.register({ id: LANG_ID });
-
         monaco.languages.setMonarchTokensProvider(LANG_ID, {
-            tokenizer: {
-                root: [
-                    [/DB|CALC|MANUAL|CONST/, "custom-source"]
-                ]
-            }
+            tokenizer: { root: [[/DB|CALC|MANUAL|CONST/, "custom-source"]] }
         });
-
         monaco.languages.registerCompletionItemProvider(LANG_ID, {
             provideCompletionItems: () => {
                 const sources = ['DB', 'CALC', 'MANUAL', 'CONST'];
                 return {
                     suggestions: sources.map(s => ({
-                        label: s,
-                        kind: monaco.languages.CompletionItemKind.Enum,
-                        insertText: s,
-                        detail: `Data Source: ${s}`
+                        label: s, kind: monaco.languages.CompletionItemKind.Enum, insertText: s
                     }))
                 };
             }
         });
     }
 
-    // --- NAVIGATION LOGIC ---
     const FIELDS = ['id', 'label', 'value', 'source', 'note'];
 
     function navigate(direction) {
         const currentIndex = state.rows.findIndex(r => r.id === state.selectedRowId);
         const fieldIndex = FIELDS.indexOf(state.activeField);
-
         let nextFieldIndex = fieldIndex + direction;
         let nextRowIndex = currentIndex;
 
-        if (nextFieldIndex >= FIELDS.length) {
-            nextFieldIndex = 0;
-            nextRowIndex++;
-        } else if (nextFieldIndex < 0) {
-            nextFieldIndex = FIELDS.length - 1;
-            nextRowIndex--;
-        }
+        if (nextFieldIndex >= FIELDS.length) { nextFieldIndex = 0; nextRowIndex++; }
+        else if (nextFieldIndex < 0) { nextFieldIndex = FIELDS.length - 1; nextRowIndex--; }
 
         const nextRow = state.rows[nextRowIndex];
         if (nextRow && !nextRow.isHeader) {
@@ -216,23 +226,11 @@
 
     function updateEditorHeight() {
         if (!window.editor) return;
-
         const container = document.getElementById('editor-container');
-        // Get the height of the actual lines of code
         const contentHeight = window.editor.getContentHeight();
-
-        // Add 4px buffer to prevent the scrollbar from appearing at exact height
         const newHeight = Math.min(Math.max(contentHeight + 4, 28), 400);
-
         container.style.height = `${newHeight}px`;
-
-        // Force Monaco to recalculate its internal view state
         window.editor.layout();
-
-        // Final check to ensure internal scrollbars are hidden
-        requestAnimationFrame(() => {
-            window.editor.layout();
-        });
     }
 
     function initMonaco() {
@@ -243,27 +241,21 @@
             minimap: { enabled: false },
             lineNumbers: 'off',
             glyphMargin: false,
-            folding: false,
             wordWrap: 'on',
             scrollBeyondLastLine: false,
-            automaticLayout: true, // Let Monaco try to assist with layout
-            scrollbar: {
-                vertical: 'hidden',
-                horizontal: 'hidden',
-                alwaysConsumeMouseWheel: false
-            },
+            automaticLayout: true,
+            scrollbar: { vertical: 'hidden', horizontal: 'hidden' },
             fontSize: 13,
             lineHeight: 20,
-            padding: { top: 4, bottom: 0 }, // Reduced bottom padding
-            fixedOverflowWidgets: true
+            padding: { top: 4, bottom: 0 }
         });
 
-        // Auto-expand formula bar height
         window.editor.onDidContentSizeChange(updateEditorHeight);
 
         window.editor.onDidChangeModelContent(() => {
             const val = window.editor.getValue();
             const row = state.rows.find(r => r.id === state.selectedRowId);
+            if (!row && state.activeField !== 'value') return;
 
             if (state.activeField === 'value') {
                 state.values[state.selectedRowId] = val;
@@ -281,21 +273,16 @@
             }
             tidyRows();
             renderGrid();
+            saveToDisk(); // Persistence trigger
         });
 
-        // Tab and Shift+Tab Handling
         window.editor.addCommand(monaco.KeyCode.Tab, () => navigate(1), '!suggestWidgetVisible');
         window.editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Tab, () => navigate(-1));
-
-        // Enter moves down
         window.editor.addCommand(monaco.KeyCode.Enter, () => {
-            const currentIndex = state.rows.findIndex(r => r.id === state.selectedRowId);
-            if (currentIndex < state.rows.length - 1) {
-                selectCell(state.rows[currentIndex + 1].id, state.activeField);
-            }
+            const idx = state.rows.findIndex(r => r.id === state.selectedRowId);
+            if (idx < state.rows.length - 1) selectCell(state.rows[idx + 1].id, state.activeField);
         }, '!suggestWidgetVisible');
 
-        // Initial layout call
         setTimeout(updateEditorHeight, 50);
     }
 
@@ -308,7 +295,7 @@
                 message: `Mismatched brackets: ${open} open, ${close} closed.`,
                 severity: monaco.MarkerSeverity.Error,
                 startLineNumber: 1, startColumn: 1,
-                endLineNumber: 1, endColumn: Math.max(val.length + 1, 1)
+                endLineNumber: 1, endColumn: val.length + 1
             });
         }
         monaco.editor.setModelMarkers(window.editor.getModel(), 'owner', markers);
