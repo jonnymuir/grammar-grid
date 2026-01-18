@@ -20,11 +20,17 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Generate Langium Code
+        # This creates the missing ./generated/ folders required for compilation
+        run: npm run langium:generate
+
       - name: Build Extension
-        # This runs your workspace-wide build
+        # This compiles the language package and bundles the extension/web-worker
         run: npm run build
 
       - name: Publish to Marketplace
         # We run vsce from the extension package folder
         working-directory: ./packages/extension
-        run: npx vsce publish --pat ${{ secrets.VSCE_PAT }}
+        # The --no-dependencies flag is often useful in monorepos to prevent 
+        # vsce from trying to re-install workspace packages during packaging
+        run: npx vsce publish --pat ${{ secrets.VSCE_PAT }} --no-dependencies

@@ -110,7 +110,7 @@ const webServerConfig = {
     format: 'iife',
     platform: 'browser',
     // We mark these as external to ensure esbuild doesn't generate standard require() calls
-    external: ['vscode', 'util', 'path', 'os', 'child_process', 'fs', 'crypto'],
+    external: ['vscode', 'path', 'os', 'child_process', 'fs', 'crypto'],
     mainFields: ['browser', 'module', 'main'],
     alias: {
         'util': 'path-browserify',
