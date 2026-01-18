@@ -1,14 +1,15 @@
-import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
 import * as vscode from 'vscode';
-import * as path from 'node:path';
-import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import type { BaseLanguageClient, LanguageClientOptions } from 'vscode-languageclient';
 
-let client: LanguageClient;
+let client: BaseLanguageClient;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    client = await startLanguageClient(context);
+    if (vscode.env.uiKind === vscode.UIKind.Web) {
+        client = await startLanguageClientWeb(context);
+    } else {
+        client = await startLanguageClientDesktop(context);
+    }
 
-    // Register our Custom Editor Provider
     context.subscriptions.push(
         vscode.window.registerCustomEditorProvider(
             'grammarGrid.editor',
@@ -28,12 +29,10 @@ class GrammarGridProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.webview.options = { enableScripts: true };
         webviewPanel.webview.html = getHtmlForWebview(webviewPanel.webview, this.context.extensionUri);
 
-        // 1. Initial Load: Send file content to Webview
         const updateWebview = () => {
             const text = document.getText();
             let data;
             try {
-                // If file is empty, use a blank template
                 data = text.trim().length === 0 ? this.getBlankTemplate() : JSON.parse(text);
             } catch {
                 data = this.getBlankTemplate();
@@ -41,20 +40,14 @@ class GrammarGridProvider implements vscode.CustomTextEditorProvider {
             webviewPanel.webview.postMessage({ type: 'loadData', data });
         };
 
-        // 2. Listen for messages from Webview
         webviewPanel.webview.onDidReceiveMessage(e => {
-            if (e.type === 'ready') {
-                updateWebview();
-            }
-            if (e.type === 'saveData') {
-                this.updateTextDocument(document, e.data);
-            }
+            if (e.type === 'ready') updateWebview();
+            if (e.type === 'saveData') this.updateTextDocument(document, e.data);
         });
 
-        // 3. Optional: Update webview if the file changes externally
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document.uri.toString() === document.uri.toString() && e.contentChanges.length > 0) {
-                // To avoid loops, only update if the change didn't come from our UI
+                // Update logic if needed
             }
         });
 
@@ -86,6 +79,80 @@ export function deactivate(): Thenable<void> | undefined {
     return client ? client.stop() : undefined;
 }
 
+async function startLanguageClientDesktop(context: vscode.ExtensionContext): Promise<BaseLanguageClient> {
+    const { LanguageClient, TransportKind } = await import('vscode-languageclient/node.js');
+    const serverModule = vscode.Uri.joinPath(context.extensionUri, 'out', 'language', 'main.cjs').fsPath;
+    const serverOptions = {
+        run: { module: serverModule, transport: TransportKind.ipc },
+        debug: { module: serverModule, transport: TransportKind.ipc }
+    };
+
+    const clientOptions: LanguageClientOptions = {
+        documentSelector: [{ scheme: 'file', language: 'calculation-language' }]
+    };
+
+    const client = new LanguageClient('calculation-language', 'CalculationLanguage', serverOptions, clientOptions);
+    await client.start();
+    return client;
+}
+
+async function startLanguageClientWeb(context: vscode.ExtensionContext): Promise<BaseLanguageClient> {
+    const { LanguageClient } = await import('vscode-languageclient/browser.js');
+
+    const serverMain = vscode.Uri.joinPath(context.extensionUri, 'out', 'language', 'main-browser.js');
+    const worker = new Worker(serverMain.toString(true));
+
+    const clientOptions: LanguageClientOptions = {
+        documentSelector: [
+            { scheme: 'vscode-vfs', language: 'calculation-language' },
+            { scheme: 'vscode-test-web', language: 'calculation-language' },
+            { language: 'calculation-language' }
+        ]
+    };
+
+    const client = new LanguageClient('calculation-language', 'CalculationLanguage', clientOptions, worker);
+    
+    // Start the client
+    await client.start();
+
+   // --- FS BRIDGE LISTENERS ---
+    client.onRequest('browser/readDirectory', async (params: { uri: string }) => {
+        try {
+            const uri = vscode.Uri.parse(params.uri);
+            // We must ensure we don't try to read 'file://' schemes in the web
+            if (uri.scheme === 'file') {
+                console.warn('Blocked attempt to read file:// scheme in browser');
+                return [];
+            }
+            return await vscode.workspace.fs.readDirectory(uri);
+        } catch (err) {
+            console.error('FS Bridge readDirectory Error:', err);
+            return []; // Return empty instead of crashing
+        }
+    });
+
+    client.onRequest('browser/readFile', async (params: { uri: string }) => {
+        try {
+            const uri = vscode.Uri.parse(params.uri);
+            return await vscode.workspace.fs.readFile(uri);
+        } catch (err) {
+            console.error('FS Bridge readFile Error:', err);
+            throw err;
+        }
+    });
+
+    client.onRequest('browser/exists', async (params: { uri: string }) => {
+        try {
+            await vscode.workspace.fs.stat(vscode.Uri.parse(params.uri));
+            return true;
+        } catch {
+            return false;
+        }
+    });
+
+    return client;
+}
+
 function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri) {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'main.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'style.css'));
@@ -94,7 +161,6 @@ function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri) {
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="${styleUri}">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
     </head>
@@ -112,20 +178,4 @@ function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.Uri) {
         <script src="${scriptUri}"></script>
     </body>
     </html>`;
-}
-
-async function startLanguageClient(context: vscode.ExtensionContext): Promise<LanguageClient> {
-    const serverModule = context.asAbsolutePath(path.join('out', 'language', 'main.cjs'));
-    const debugOptions = { execArgv: ['--nolazy', `--inspect=6009`] };
-    const serverOptions: ServerOptions = {
-        run: { module: serverModule, transport: TransportKind.ipc },
-        debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
-    };
-    const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'vscode-webview-resource', language: 'calculation-language' },
-        { scheme: 'untitled', language: 'calculation-language' }]
-    };
-    const client = new LanguageClient('calculation-language', 'CalculationLanguage', serverOptions, clientOptions);
-    await client.start();
-    return client;
 }
