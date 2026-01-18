@@ -1,5 +1,8 @@
 # GrammarGrid
 
+[![Publish Extension](https://github.com/jonnymuir/grammar-grid/actions/workflows/publish.yml/badge.svg)](https://github.com/jonnymuir/grammar-grid/actions/workflows/publish.yml)
+[![Open in vscode.dev](https://img.shields.io/static/v1?logo=visualstudiocode&label=vscode.dev&message=Open%20in%20Browser&color=blue)](https://vscode.dev/github/jonnymuir/grammar-grid)
+
 **GrammarGrid** is a hybrid development environment that combines the intuitive interface of a **spreadsheet** with the power of a **Domain-Specific Language (DSL)**. It allows users to build complex calculation logic using a custom BNF grammar while maintaining a live connection to organizational data dictionaries.
 
 ## The Vision
@@ -11,6 +14,13 @@ Modern financial and engineering calculations are often trapped in "Black Box" s
 3. **Connecting Data Silos:** Custom functions like `data_dictionary()` pull live values directly from SQL databases/APIs instead of hardcoded numbers.
 
 ---
+
+## Grammar Grid Demo
+
+[![](https://img.shields.io/badge/Open%20in-vscode.dev-blue)](https://vscode.dev/github/jonnymuir/grammar-grid)
+
+Click the button above to try the Grammar Grid live in your browser! 
+No installation required.
 
 ## Project Architecture
 

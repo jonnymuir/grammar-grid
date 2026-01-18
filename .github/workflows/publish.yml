@@ -1,0 +1,30 @@
+name: Publish Extension
+
+on:
+  push:
+    tags:
+      - 'v*' # Runs when you push a tag like v1.0.0
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Extension
+        # This runs your workspace-wide build
+        run: npm run build
+
+      - name: Publish to Marketplace
+        # We run vsce from the extension package folder
+        working-directory: ./packages/extension
+        run: npx vsce publish --pat ${{ secrets.VSCE_PAT }}

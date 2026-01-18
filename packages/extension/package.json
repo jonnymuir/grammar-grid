@@ -1,15 +1,48 @@
 {
     "name": "vscode-grammar-grid",
-    "description": "The extension specific package",
+    "displayName": "Grammar Grid",
+    "description": "[Pre-release] Interactive calculation grid with a custom DSL and Monaco formula bar.",
     "version": "0.0.1",
-    "displayName": "grammar-grid",
+    "publisher": "jonnymuir",
+    "preview": true,
+    "license": "MIT",
     "type": "module",
     "engines": {
-        "vscode": "^1.67.0"
+        "vscode": "^1.74.0"
     },
     "categories": [
-        "Programming Languages"
+        "Programming Languages",
+        "Visualization",
+        "Education"
     ],
+    "keywords": [
+        "calculation",
+        "grid",
+        "grammar",
+        "langium",
+        "spreadsheet"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jonnymuir/grammar-grid"
+    },
+    "bugs": {
+        "url": "https://github.com/jonnymuir/grammar-grid/issues"
+    },
+    "homepage": "https://github.com/jonnymuir/grammar-grid#readme",
+    "extensionKind": [
+        "ui",
+        "workspace",
+        "web"
+    ],
+    "main": "./out/extension/main.cjs",
+    "browser": "./out/browser/extension.cjs",
+    "capabilities": {
+        "virtualWorkspaces": true,
+        "untrustedWorkspaces": {
+            "supported": true
+        }
+    },
     "contributes": {
         "jsonValidation": [
             {
@@ -21,16 +54,13 @@
             {
                 "id": "calculation-language",
                 "aliases": [
-                    "CalculationLanguage",
+                    "Calculation Language",
                     "calculation-language"
                 ],
                 "extensions": [
                     ".calc"
                 ],
-                "configuration": "./language-configuration.json",
-                "mimetypes": [
-                    "application/json"
-                ]
+                "configuration": "./language-configuration.json"
             }
         ],
         "grammars": [
@@ -59,14 +89,6 @@
             }
         ]
     },
-    "main": "./out/extension/main.cjs",
-    "browser": "./out/browser/extension.cjs",
-    "capabilities": {
-        "virtualWorkspaces": true,
-        "untrustedWorkspaces": {
-            "supported": true
-        }
-    },
     "scripts": {
         "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
         "vscode:prepublish": "npm run build",
@@ -81,7 +103,7 @@
         "vscode-languageserver": "~9.0.1"
     },
     "devDependencies": {
-        "@types/vscode": "~1.67.0",
+        "@types/vscode": "~1.74.0",
         "concurrently": "~8.2.1",
         "esbuild": "~0.25.5",
         "path-browserify": "^1.0.1",

@@ -1,2 +1,4 @@
-.vscode/**
-.vscode-test/**
+.vscode-test/
+src/
+tsconfig.json
+esbuild.mjs
