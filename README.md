@@ -17,7 +17,7 @@ Modern financial and engineering calculations are often trapped in "Black Box" s
 
 ## Grammar Grid Demo
 
-[![](https://img.shields.io/badge/Open%20in-vscode.dev-blue)](https://vscode.dev/github/jonnymuir/grammar-grid)
+[![](https://img.shields.io/badge/Open%20in-vscode.dev-blue)](https://vscode.dev/github/jonnymuir/grammar-grid-demo)
 
 Click the button above to try the Grammar Grid live in your browser! 
 No installation required.
