@@ -1,7 +1,7 @@
 # GrammarGrid
 
 [![Publish Extension](https://github.com/jonnymuir/grammar-grid/actions/workflows/publish.yml/badge.svg)](https://github.com/jonnymuir/grammar-grid/actions/workflows/publish.yml)
-[![Open in vscode.dev](https://img.shields.io/static/v1?logo=visualstudiocode&label=vscode.dev&message=Open%20in%20Browser&color=blue)](https://vscode.dev/github/jonnymuir/grammar-grid)
+[![Open in vscode.dev](https://img.shields.io/static/v1?logo=visualstudiocode&label=vscode.dev&message=Open%20in%20Browser&color=blue)](https://vscode.dev/github/jonnymuir/grammar-grid-demo)
 
 **GrammarGrid** is a hybrid development environment that combines the intuitive interface of a **spreadsheet** with the power of a **Domain-Specific Language (DSL)**. It allows users to build complex calculation logic using a custom BNF grammar while maintaining a live connection to organizational data dictionaries.
 
